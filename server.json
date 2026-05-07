@@ -1,0 +1,17 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.idealo.mcp/mcp",
+  "title": "idealo MCP Server",
+  "description": "Search products, compare prices, and discover deals across 6 European markets (DE, UK, FR, IT, ES, AT) directly from your AI assistant.",
+  "repository": {
+    "url": "https://github.com/idealo/mcp-server-guide",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.idealo.com/mcp"
+    }
+  ]
+}

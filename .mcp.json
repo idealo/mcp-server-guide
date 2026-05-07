@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "idealo": {
+      "type": "http",
+      "url": "https://mcp.idealo.com/mcp"
+    }
+  }
+}
