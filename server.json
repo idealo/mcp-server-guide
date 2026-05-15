@@ -7,7 +7,7 @@
     "url": "https://github.com/idealo/mcp-server-guide",
     "source": "github"
   },
-  "version": "1.0.0-beta",
+  "version": "1.0.0",
   "remotes": [
     {
       "type": "streamable-http",
