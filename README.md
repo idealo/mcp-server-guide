@@ -5,7 +5,7 @@ The idealo MCP server brings idealo's product intelligence directly into your AI
 > [!NOTE]
 > Rate limits apply to all idealo MCP server tools.
 > <br><br>
-> The default **Trial** tier is self-serve via OAuth and gives you `4 req/s · 8 burst · 200 calls/day` per user. Trial responses include a single product image and exclude shop logos, external links, and detailed user reviews.
+> The default **Trial** tier is self-serve via OAuth and gives you `3 req/s · 6 burst · 500 calls/day` per user. Trial responses include a single product image, cap `get_product_offers` at 10 offers per product, and exclude shop logos, external links, and detailed user reviews.
 > <br><br>
 > **Partner tier** unlocks higher rate limits, full image arrays, shop logos, test-report links, and full user-review payloads. To request Partner access, contact us via mcp@idealo.de.
 
@@ -186,3 +186,4 @@ Examples:
 - Website: [idealo.de](https://www.idealo.de)
 - Tool reference: [docs/tools.md](./docs/tools.md)
 - Partner-tier requests: mcp@idealo.de
+- Request support for a new MCP client: mcp@idealo.de
