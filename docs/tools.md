@@ -9,13 +9,14 @@ Detailed reference for every tool exposed by the idealo MCP server: input schema
 
 | Capability | Trial (default) | Partner |
 |---|---|---|
-| Rate limit | 4 req/s · 8 burst · 200/day (per user) | Higher (contact mcp@idealo.de) |
+| Rate limit | 3 req/s · 6 burst · 500/day (per user) | Higher (contact mcp@idealo.de) |
 | Product images per response | 1 | up to 7 |
 | `offers[].shop.logoUrl` | omitted | included |
 | `offers[].shop.rating.url` | omitted | included |
 | `testReports[].logoUrl` | omitted | included |
 | `testReports[].externalUrl` | omitted | included |
 | `userReviews` (full payload + comments) | omitted | included |
+| `get_product_offers` total offers per product | capped at 10 | unlimited |
 
 Trial vs Partner is selected server-side based on the OAuth principal — the same tools and inputs work for both tiers; only the response shape differs.
 
@@ -308,6 +309,9 @@ Paginated list of offers for a product. Use after `get_product_details` (which o
 
 **Page size** is fixed at 5 offers per call. `nextOffset === 0` in the response signals the end of results.
 
+> [!NOTE]
+> Trial tier caps `get_product_offers` at **10 offers per product**. When the cap is hit, the response sets `nextOffset: 0` and includes a `message` field noting the limit. Partner tier has no cap.
+
 ### Sample request
 
 ```json
@@ -368,6 +372,7 @@ Paginated list of offers for a product. Use after `get_product_details` (which o
 |---|---|---|
 | `offers[].shop.logoUrl` | omitted | included |
 | `offers[].shop.rating.url` | omitted | included |
+| Total offers per product | capped at 10 (with `message`) | unlimited |
 
 Pricing, delivery, payments, return policy, and freshness are identical across tiers.
 
