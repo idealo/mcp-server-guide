@@ -5,9 +5,9 @@ The idealo MCP server brings idealo's product intelligence directly into your AI
 > [!NOTE]
 > Rate limits apply to all idealo MCP server tools.
 > <br><br>
-> The default **Trial** tier is self-serve via OAuth and gives you `3 req/s · 6 burst · 500 calls/day` per user. Trial responses include a single product image, cap `get_product_offers` at 10 offers per product, and exclude shop logos, external links, and detailed user reviews.
+> The default **Trial** tier is self-serve via OAuth and gives you `3 req/s · 6 burst · 500 calls/day` per user (enforced per OAuth identity). Trial responses include a single product image, cap `get_product_offers` at 10 offers per product, and omit shop logos, test-report logos/links, and the full `userReviews` payload on `get_product_details` (search still returns `userReviewsSummary`).
 > <br><br>
-> **Partner tier** unlocks higher rate limits, full image arrays, shop logos, test-report links, and full user-review payloads. To request Partner access, contact us via mcp@idealo.de.
+> **Partner tier** uses `10 req/s · 30 burst · 10,000 calls/day` and returns full image galleries (up to 7), shop logos, test-report assets, and user reviews. To request Partner access, contact us via mcp@idealo.de.
 
 For the complete tool reference (input schemas, sample responses, tier-by-tier field differences), see **[docs/tools.md](./docs/tools.md)**.
 
@@ -19,7 +19,7 @@ For the complete tool reference (input schemas, sample responses, tier-by-tier f
 
 - **Paginated offers** — Walk every offer for a product with shop name, ratings, pricing breakdown, delivery estimates, payment methods, free-return policy, and shipping costs. 5 offers per page.
 
-- **Price history & analytics** — 30-day price trend with min/max/avg statistics, percentage change, sampling granularity, ASCII chart, and AI-generated buying recommendations.
+- **Price history & analytics** — 30-day trend with formatted prices, min/max/avg statistics, period change %, sampling granularity, and confidence metadata (`get_product_price_history`; `get_product_details` includes a compact raw-cent snippet only).
 
 ## Installation & Setup
 
@@ -159,7 +159,9 @@ Partner-tier credentials are issued separately by idealo upon request.
 
 ## Prompting your MCP client
 
-Once connected, prompt your client in plain language. The 4 tools chain together via an opaque `productRef` returned by `search_products`.
+Once connected, prompt your client in plain language. The four tools chain via an opaque `productRef` from `search_products`.
+
+Recommended flow: broad `search_products` → refine with filter IDs from the response (`availableCategories`, `availableManufacturers`, `availableFilters`, `sizeAttributes`) → `get_product_details` → `get_product_offers` and/or `get_product_price_history`.
 
 Examples:
 
@@ -172,7 +174,7 @@ Examples:
 
 - **Use `productRef`.** `search_products` returns an encrypted `productRef` per result — pass that string directly to `get_product_details`, `get_product_offers`, and `get_product_price_history`. It's opaque, marketplace-aware, and short-lived.
 - **`includeSearchFilters` and `includeSizeFilters` require `includeCategories`.** The server rejects calls that send attribute or size filters without at least one numeric category ID. Search first without filters to discover available `categoryId`s in the response.
-- **Pick the right country.** Pass `country` as a 2-letter ISO code (`DE`, `AT`, `GB`, `FR`, `IT`, `ES`). Unknown codes silently fall back to Germany.
+- **Pick the right country.** Pass `country` as a 2-letter code (`DE`, `AT`, `GB` or `UK`, `FR`, `IT`, `ES`). Unknown codes silently fall back to Germany (`DE`).
 - **Paginate offers properly.** `get_product_offers` returns 5 offers per call plus a `nextOffset`. Loop until `nextOffset === 0`.
 - **Some shops are filtered out.** Compliance blocklist removes Amazon, eBay, and Otto offers from all tiers — this is intentional and applies regardless of tier.
 - **Hit the same marketplace consistently.** A `productRef` from `country=DE` won't return useful data when reused with `country=GB`.
