@@ -9,7 +9,7 @@ Detailed reference for every tool exposed by the idealo MCP server: input schema
 
 | Capability | Trial (default) | Partner |
 |---|---|---|
-| Rate limit | 3 req/s · 6 burst · 500/day (per user) | Higher (contact mcp@idealo.de) |
+| Rate limit | 3 req/s · 6 burst · 500/day (per user) | 10 req/s · 30 burst · 10,000/day |
 | Product images per response | 1 | up to 7 |
 | `offers[].shop.logoUrl` | omitted | included |
 | `offers[].shop.rating.url` | omitted | included |
@@ -31,7 +31,7 @@ Search the idealo product catalog across 6 European marketplaces. Returns produc
 | Param | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `query` | `string` (min 1) | ✅ | — | Free-text search query |
-| `country` | `string` (length 2) | ❌ | `DE` | Two-letter ISO code: `DE`, `AT`, `GB`, `FR`, `IT`, `ES`. Unknown codes fall back to `DE`. |
+| `country` | `string` (length 2) | ❌ | `DE` | Two-letter code: `DE`, `AT`, `GB` or `UK`, `FR`, `IT`, `ES`. Unknown codes fall back to `DE`. |
 | `filters.minPrice` | `number` | ❌ | — | Minimum price (whole EUR) |
 | `filters.maxPrice` | `number` | ❌ | — | Maximum price (whole EUR) |
 | `filters.availableOnly` | `boolean` | ❌ | `false` | Show only in-stock products |
@@ -39,7 +39,7 @@ Search the idealo product catalog across 6 European marketplaces. Returns produc
 | `filters.includeCategories` | `string[]` (numeric) | ❌ | — | Numeric category IDs, e.g. `["30311"]`. **Required when using `includeSearchFilters` or `includeSizeFilters`.** |
 | `filters.includeManufacturers` | `string[]` | ❌ | — | Manufacturer / brand IDs |
 | `filters.includeSearchFilters` | `string[]` | ❌ | — | Attribute filter IDs (color, material, etc.). **Requires `includeCategories`.** |
-| `filters.includeSizeFilters` | `string[]` | ❌ | — | Size filter IDs. **Requires `includeCategories`.** |
+| `filters.includeSizeFilters` | `string[]` | ❌ | — | Size filter IDs from `sizeAttributes` (`attributeKeyValue`). **Requires `includeCategories`.** |
 
 ### Sample request
 
@@ -387,7 +387,7 @@ Pricing, delivery, payments, return policy, and freshness are identical across t
 
 ## `get_product_price_history`
 
-30-day price history with statistics, trend analysis, ASCII chart, and buying-time insights.
+30-day price history with statistics, trend analysis, and formatted price series.
 
 ### Input schema
 
@@ -473,7 +473,7 @@ Always pass it through unchanged from the source response (`search_products` res
 |---|---|
 | `DE` | 1 |
 | `AT` | 2 |
-| `GB` (alias `UK`) | 3 |
+| `GB`, `UK` | 3 |
 | `FR` | 4 |
 | `IT` | 10 |
 | `ES` | 11 |
