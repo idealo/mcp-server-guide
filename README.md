@@ -5,9 +5,9 @@ The idealo MCP server brings idealo's product intelligence directly into your AI
 > [!NOTE]
 > Rate limits apply to all idealo MCP server tools.
 > <br><br>
-> The default **Trial** tier is self-serve via OAuth and gives you `3 req/s · 6 burst · 500 calls/day` per user (enforced per OAuth identity). Trial responses include a single product image, cap `get_product_offers` at 10 offers per product, and omit shop logos, test-report logos/links, and the full `userReviews` payload on `get_product_details` (search still returns `userReviewsSummary`).
+> The default **Trial** tier is self-serve via OAuth and gives you `3 req/s · 6 burst · 500 calls/day` per user. Trial responses include a single product image, cap `get_product_offers` at 10 offers per product, and exclude shop logos, test-report links, and detailed user reviews.
 > <br><br>
-> **Partner tier** uses `10 req/s · 30 burst · 10,000 calls/day` and returns full image galleries (up to 7), shop logos, test-report assets, and user reviews. To request Partner access, contact us via mcp@idealo.de.
+> **Partner tier** (`10 req/s · 30 burst · 10,000 calls/day`) unlocks full image galleries, shop logos, test-report links, and full user-review payloads. To request Partner access, contact us via mcp@idealo.de.
 
 For the complete tool reference (input schemas, sample responses, tier-by-tier field differences), see **[docs/tools.md](./docs/tools.md)**.
 
@@ -19,7 +19,7 @@ For the complete tool reference (input schemas, sample responses, tier-by-tier f
 
 - **Paginated offers** — Walk every offer for a product with shop name, ratings, pricing breakdown, delivery estimates, payment methods, free-return policy, and shipping costs. 5 offers per page.
 
-- **Price history & analytics** — 30-day trend with formatted prices, min/max/avg statistics, period change %, sampling granularity, and confidence metadata (`get_product_price_history`; `get_product_details` includes a compact raw-cent snippet only).
+- **Price history & analytics** — 30-day price trend with min/max/avg statistics, percentage change, and sampling granularity.
 
 ## Installation & Setup
 
@@ -153,15 +153,13 @@ Any client that supports the **Streamable HTTP** transport can connect. Use:
 
 ## Authentication
 
-The server uses OAuth 2.0 with **Dynamic Client Registration (DCR) + PKCE**. Spec-compliant MCP clients discover the auth flow automatically through `.well-known/oauth-protected-resource` — no `client_id` / `client_secret` setup required for the Trial tier. On first connect, your client opens a browser for login. Tokens are cached client-side and refreshed transparently.
+The server uses OAuth 2.0 with **Dynamic Client Registration (DCR)**, **PKCE**, and **Client ID Metadata Documents (CIMD)**. Spec-compliant MCP clients discover the auth flow automatically through `.well-known/oauth-protected-resource` and OpenID Provider Metadata (including `client_id_metadata_document_supported: true`). For Trial tier, no pre-shared `client_id` / `client_secret` is required — clients may register via DCR or use a CIMD URL as the client identifier. On first connect, your client opens a browser for login. Tokens are cached client-side and refreshed transparently.
 
 Partner-tier credentials are issued separately by idealo upon request.
 
 ## Prompting your MCP client
 
-Once connected, prompt your client in plain language. The four tools chain via an opaque `productRef` from `search_products`.
-
-Recommended flow: broad `search_products` → refine with filter IDs from the response (`availableCategories`, `availableManufacturers`, `availableFilters`, `sizeAttributes`) → `get_product_details` → `get_product_offers` and/or `get_product_price_history`.
+Once connected, prompt your client in plain language. The 4 tools chain together via an opaque `productRef` returned by `search_products`.
 
 Examples:
 
@@ -174,7 +172,7 @@ Examples:
 
 - **Use `productRef`.** `search_products` returns an encrypted `productRef` per result — pass that string directly to `get_product_details`, `get_product_offers`, and `get_product_price_history`. It's opaque, marketplace-aware, and short-lived.
 - **`includeSearchFilters` and `includeSizeFilters` require `includeCategories`.** The server rejects calls that send attribute or size filters without at least one numeric category ID. Search first without filters to discover available `categoryId`s in the response.
-- **Pick the right country.** Pass `country` as a 2-letter code (`DE`, `AT`, `GB` or `UK`, `FR`, `IT`, `ES`). Unknown codes silently fall back to Germany (`DE`).
+- **Pick the right country.** Pass `country` as a 2-letter ISO code (`DE`, `AT`, `GB` or `UK`, `FR`, `IT`, `ES`). Unknown codes silently fall back to Germany.
 - **Paginate offers properly.** `get_product_offers` returns 5 offers per call plus a `nextOffset`. Loop until `nextOffset === 0`.
 - **Some shops are filtered out.** Compliance blocklist removes Amazon, eBay, and Otto offers from all tiers — this is intentional and applies regardless of tier.
 - **Hit the same marketplace consistently.** A `productRef` from `country=DE` won't return useful data when reused with `country=GB`.

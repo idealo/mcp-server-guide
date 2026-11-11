@@ -9,18 +9,16 @@ Detailed reference for every tool exposed by the idealo MCP server: input schema
 
 | Capability | Trial (default) | Partner |
 |---|---|---|
-| Rate limit | 3 req/s · 6 burst · 500/day (per OAuth `sub`) | 10 req/s · 30 burst · 10,000/day |
-| Product images per response | 1 (`imageUrl` / truncated `imageUrls`) | up to 7 in `imageUrls` |
-| `offers[].shop.logoUrl` | omitted (GraphQL query) | included |
+| Rate limit | 3 req/s · 6 burst · 500/day (per user) | 10 req/s · 30 burst · 10,000/day |
+| Product images per response | 1 | up to 7 |
+| `offers[].shop.logoUrl` | omitted | included |
 | `offers[].shop.rating.url` | omitted | included |
-| `testReports.list[].logoUrl` | omitted | included |
-| `testReports.list[].externalUrl` | omitted | included |
-| `get_product_details.userReviews` | omitted | full summary + list |
-| `search_products` review data | `userReviewsSummary` only | same |
-| `get_product_offers` total offers per product | capped at 10 (`message` when hit) | unlimited |
-| Offer `relocatorUrl` | included | included |
+| `testReports[].logoUrl` | omitted | included |
+| `testReports[].externalUrl` | omitted | included |
+| `userReviews` (full payload + comments) | omitted | included |
+| `get_product_offers` total offers per product | capped at 10 | unlimited |
 
-Trial vs Partner is chosen from the OAuth token (Trial = interactive code+PKCE users; Partner = provisioned client credentials). Tool names and inputs are identical; tier affects GraphQL field selection plus post-processing (image truncation and compliance filtering).
+Trial vs Partner is selected server-side based on the OAuth principal — the same tools and inputs work for both tiers; only the response shape differs.
 
 ---
 
@@ -33,15 +31,15 @@ Search the idealo product catalog across 6 European marketplaces. Returns produc
 | Param | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `query` | `string` (min 1) | ✅ | — | Free-text search query |
-| `country` | `string` (length 2) | ❌ | `DE` | Marketplace code: `DE`, `AT`, `GB` or `UK`, `FR`, `IT`, `ES`. Unknown codes fall back to `DE`. |
-| `filters.minPrice` | `number` | ❌ | — | Lower bound in EUR (e.g. `50` → €50); server converts to cents |
-| `filters.maxPrice` | `number` | ❌ | — | Upper bound in EUR (e.g. `200` → €200); server converts to cents |
+| `country` | `string` (length 2) | ❌ | `DE` | Two-letter code: `DE`, `AT`, `GB` or `UK`, `FR`, `IT`, `ES`. Unknown codes fall back to `DE`. |
+| `filters.minPrice` | `number` | ❌ | — | Minimum price (whole EUR) |
+| `filters.maxPrice` | `number` | ❌ | — | Maximum price (whole EUR) |
 | `filters.availableOnly` | `boolean` | ❌ | `false` | Show only in-stock products |
 | `filters.bargainsOnly` | `boolean` | ❌ | `false` | Show only discounted offers |
 | `filters.includeCategories` | `string[]` (numeric) | ❌ | — | Numeric category IDs, e.g. `["30311"]`. **Required when using `includeSearchFilters` or `includeSizeFilters`.** |
 | `filters.includeManufacturers` | `string[]` | ❌ | — | Manufacturer / brand IDs |
 | `filters.includeSearchFilters` | `string[]` | ❌ | — | Attribute filter IDs (color, material, etc.). **Requires `includeCategories`.** |
-| `filters.includeSizeFilters` | `string[]` | ❌ | — | Size option IDs (`attributeKeyValue` from `sizeAttributes`). **Requires `includeCategories`.** |
+| `filters.includeSizeFilters` | `string[]` | ❌ | — | Size filter IDs from `sizeAttributes` (`attributeKeyValue`). **Requires `includeCategories`.** |
 
 ### Sample request
 
@@ -69,16 +67,12 @@ Search the idealo product catalog across 6 European marketplaces. Returns produc
       "itemType": "PRODUCT",
       "siteId": 1,
       "name": "Apple MacBook Air 13\" M2",
-      "nameDelta": "256 GB",
       "price": "999,00 €",
       "imageUrl": "https://cdn.idealo.com/folder/Product/12345/1/12345_1.jpg",
       "url": "https://www.idealo.de/preisvergleich/OffersOfProduct/12345.html",
       "totalOfferCount": 42,
       "userReviewsSummary": { "averageRating": 4.5, "totalReviewCount": 128 },
-      "testReportsSummary": { "grade": "gut (2,1)" },
-      "badges": {
-        "bargain": { "discountRate": 12, "tags": ["REGULAR"] }
-      }
+      "testReportsSummary": { "grade": "gut (2,1)" }
     }
   ],
   "availableCategories": [
@@ -97,16 +91,9 @@ Search the idealo product catalog across 6 European marketplaces. Returns produc
       ]
     }
   ],
-  "sizeAttributes": [
-    {
-      "attributeKeyId": "19326",
-      "name": "Schuhgröße",
-      "attributes": [
-        { "attributeKeyValue": "19326_5486736", "content": "42", "amount": 15 }
-      ]
-    }
-  ],
-  "suggestedFilters": [{ "id": "356", "type": "MANUFACTURER" }]
+  "sizeAttributes": [],
+  "suggestedFilters": [{ "id": "356", "type": "MANUFACTURER" }],
+  "searchResultsUrl": "https://www.idealo.de/preisvergleich/?q=macbook"
 }
 ```
 
@@ -114,16 +101,14 @@ Search the idealo product catalog across 6 European marketplaces. Returns produc
 
 | Field | Trial | Partner |
 |---|---|---|
-| `results[].imageUrl` | single primary image | single primary image |
-| `results[].userReviewsSummary` | included when available | included when available |
+| `results[].imageUrl` | single image (already a single field) | single image (same) |
 
-Search result shape is the same across tiers; galleries and gated fields appear on `get_product_details` / `get_product_offers`.
+`search_products` itself returns the same shape across tiers — the divergence shows up downstream in `get_product_details` and `get_product_offers`.
 
 ### Errors & quirks
 
-- Sending `includeSearchFilters` or `includeSizeFilters` without `includeCategories` fails with `FilterValidationError` (surfaced as a tool error).
+- Sending `includeSearchFilters` without `includeCategories` throws `FilterValidationError`.
 - Category IDs must match `^\d+$` (numeric strings). Non-numeric IDs are rejected.
-- Non-validation failures degrade to `{ "query": "...", "results": [] }` instead of throwing.
 
 ---
 
@@ -136,7 +121,7 @@ Fetch a complete profile for a single product: top offers, reviews, expert revie
 | Param | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `productRef` | `string` (min 1) | ✅ | — | Encrypted reference from `search_products`, format `pr.v1.<kid>.<base64>` |
-| `country` | `string` (length 2) | ❌ | `DE` | `DE`, `AT`, `GB`/`UK`, `FR`, `IT`, `ES` |
+| `country` | `string` (length 2) | ❌ | `DE` | Marketplace code |
 | `type` | `"PRODUCT" \| "CLUSTER" \| "SINGLE_OFFER"` | ❌ | `PRODUCT` | Item type |
 
 ### Sample request
@@ -158,7 +143,6 @@ Fields marked **⭐ Partner only** are omitted or truncated for Trial.
   "itemType": "PRODUCT",
   "siteId": 1,
   "name": "Apple MacBook Air 13\" M2",
-  "nameDelta": "256 GB",
   "url": "https://www.idealo.de/preisvergleich/OffersOfProduct/12345.html",
 
   // ⭐ Partner: full array. Trial: truncated to 1 image.
@@ -192,17 +176,15 @@ Fields marked **⭐ Partner only** are omitted or truncated for Trial.
         { "costCode": "pp", "name": "PayPal" },
         { "costCode": null, "name": "Standard" }
       ],
-      "showPaymentDisclaimer": false,
       "delivery": {
         "deliveryText": "1-2 Werktage",
         "deliveryStatus": "SHORT",
         "earlyDeliveryDate": "2024-01-05",
         "lateDeliveryDate": "2024-01-06"
       },
-      "showPaymentDisclaimer": false,
       "freeReturnDays": 30,
       "cheapestTotalPriceOffer": true,
-      "freshness": "2024-01-04T10:15:00.000Z",
+      "freshness": "1h",
       "minShippingCost": "0,00 €",
       "hasAlwaysFreeShipping": true
     }
@@ -297,8 +279,6 @@ Fields marked **⭐ Partner only** are omitted or truncated for Trial.
 }
 ```
 
-Preview `offers` are capped at **3** per call (`IDEALO_OFFERS_LIMIT`, default 3). `priceTrend.history[].price` values are **integers in cents** (unlike `get_product_price_history`, which formats prices per marketplace).
-
 ### Tier differences
 
 | Field | Trial | Partner |
@@ -310,7 +290,7 @@ Preview `offers` are capped at **3** per call (`IDEALO_OFFERS_LIMIT`, default 3)
 | `testReports[].logoUrl` | omitted | included |
 | `testReports[].externalUrl` | omitted | included |
 
-All other fields (specifications, pros/cons, expert review, compact `priceTrend`, offer pricing/delivery, `relocatorUrl`) are identical across tiers. Invalid or expired `productRef` values return a tool error (`Product not found`).
+All other fields (specifications, pros/cons, expert review, price trend, offer pricing/delivery) are identical across tiers.
 
 ---
 
@@ -323,14 +303,14 @@ Paginated list of offers for a product. Use after `get_product_details` (which o
 | Param | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `productRef` | `string` (min 1) | ✅ | — | Encrypted reference from `search_products` |
-| `country` | `string` (length 2) | ❌ | `DE` | `DE`, `AT`, `GB`/`UK`, `FR`, `IT`, `ES` |
+| `country` | `string` (length 2) | ❌ | `DE` | Marketplace code |
 | `type` | `"PRODUCT" \| "CLUSTER" \| "SINGLE_OFFER"` | ❌ | `PRODUCT` | Item type |
 | `offset` | `number` (≥ 0) | ❌ | `0` | Pagination offset; pass `nextOffset` from previous response |
 
 **Page size** is fixed at 5 offers per call. `nextOffset === 0` in the response signals the end of results.
 
 > [!NOTE]
-> Trial tier caps `get_product_offers` at **10 offers per product**. When the cap is hit, the response sets `nextOffset: 0`, may return a partial last page, and sets `message` to `Trial tier limit reached: max 10 offers per product. Upgrade for full access.` Partner tier has no cap.
+> Trial tier caps `get_product_offers` at **10 offers per product**. When the cap is hit, the response sets `nextOffset: 0` and includes a `message` field noting the limit. Partner tier has no cap.
 
 ### Sample request
 
@@ -370,7 +350,6 @@ Paginated list of offers for a product. Use after `get_product_details` (which o
         { "costCode": "pp", "name": "PayPal" },
         { "costCode": null, "name": "Versandkostenfrei" }
       ],
-      "showPaymentDisclaimer": false,
       "delivery": {
         "deliveryText": "1-2 Werktage",
         "deliveryStatus": "SHORT",
@@ -379,7 +358,7 @@ Paginated list of offers for a product. Use after `get_product_details` (which o
       },
       "freeReturnDays": 30,
       "cheapestTotalPriceOffer": true,
-      "freshness": "2024-01-04T10:15:00.000Z",
+      "freshness": "1h",
       "minShippingCost": "0,00 €",
       "hasAlwaysFreeShipping": true
     }
@@ -408,14 +387,14 @@ Pricing, delivery, payments, return policy, and freshness are identical across t
 
 ## `get_product_price_history`
 
-30-day price history with formatted series points, aggregate statistics, sampling metadata, and confidence score. No separate markdown report or ASCII chart is returned — clients interpret `structuredContent.priceTrend` themselves.
+30-day price history with statistics, trend analysis, and formatted price series.
 
 ### Input schema
 
 | Param | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `productRef` | `string` (min 1) | ✅ | — | Encrypted reference from `search_products` |
-| `country` | `string` (length 2) | ❌ | `DE` | `DE`, `AT`, `GB`/`UK`, `FR`, `IT`, `ES` |
+| `country` | `string` (length 2) | ❌ | `DE` | Marketplace code |
 | `type` | `"PRODUCT" \| "CLUSTER" \| "SINGLE_OFFER"` | ❌ | `PRODUCT` | Item type |
 
 ### Sample request
@@ -471,7 +450,7 @@ If no history is available (e.g. brand-new product or invalid `productRef` for t
 
 ### Tier differences
 
-`get_product_price_history` returns the same shape across tiers — pricing analytics are not gated. Invalid `productRef` values yield `{ "priceTrend": null }` (no throw). Other errors also degrade to `priceTrend: null`.
+`get_product_price_history` returns the same shape across tiers — pricing analytics are not gated.
 
 ### Currency formatting
 
@@ -494,7 +473,7 @@ Always pass it through unchanged from the source response (`search_products` res
 |---|---|
 | `DE` | 1 |
 | `AT` | 2 |
-| `GB` (alias `UK`) | 3 |
+| `GB`, `UK` | 3 |
 | `FR` | 4 |
 | `IT` | 10 |
 | `ES` | 11 |
@@ -519,14 +498,3 @@ SINGLE_OFFER  — single shop's offer
 | `amzp` | Amazon Pay |
 | `apple_pay` | Apple Pay |
 | `google_pay` | Google Pay |
-| `suw` | Sofortüberweisung |
-| `visa` / `mastercard` / `american_express` | Card networks |
-| `eps` / `psc` / `bizum` | Regional methods |
-
-### Compliance filtering (all tiers)
-
-Offers from Amazon, eBay, and Otto shop IDs are removed server-side after GraphQL mapping. Counts and pagination reflect the filtered list.
-
-### `delivery.deliveryStatus`
-
-`SHORT`, `MEDIUM`, `LONG`, or `UNKNOWN` (enum strings).
