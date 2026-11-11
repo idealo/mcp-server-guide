@@ -18,7 +18,7 @@ Detailed reference for every tool exposed by the idealo MCP server: input schema
 | `userReviews` (full payload + comments) | omitted | included |
 | `get_product_offers` total offers per product | capped at 10 | unlimited |
 
-Trial vs Partner is selected server-side based on the OAuth principal — the same tools and inputs work for both tiers; only the response shape differs.
+Trial vs Partner is selected server-side based on the OAuth principal (your MCP login identity — separate from an idealo website account). The same tools and inputs work for both tiers; only the response shape differs.
 
 ---
 

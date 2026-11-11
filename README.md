@@ -155,6 +155,9 @@ Any client that supports the **Streamable HTTP** transport can connect. Use:
 
 The server uses OAuth 2.0 with **Dynamic Client Registration (DCR)**, **PKCE**, and **Client ID Metadata Documents (CIMD)**. Spec-compliant MCP clients discover the auth flow automatically through `.well-known/oauth-protected-resource` and OpenID Provider Metadata (including `client_id_metadata_document_supported: true`). For Trial tier, no pre-shared `client_id` / `client_secret` is required — clients may register via DCR or use a CIMD URL as the client identifier. On first connect, your client opens a browser for login. Tokens are cached client-side and refreshed transparently.
 
+> [!IMPORTANT]
+> **MCP login is not your idealo website account.** The identity you use in the OAuth browser flow is for MCP API access only. It is separate from signing in on [idealo.de](https://www.idealo.de) and other idealo consumer sites — website credentials do not automatically grant MCP access, and an MCP login does not sign you into the website.
+
 Partner-tier credentials are issued separately by idealo upon request.
 
 ## Prompting your MCP client
